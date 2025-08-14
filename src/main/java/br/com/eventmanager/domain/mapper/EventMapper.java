@@ -4,7 +4,6 @@ import br.com.eventmanager.domain.Category;
 import br.com.eventmanager.domain.Event;
 import br.com.eventmanager.domain.Location;
 import br.com.eventmanager.domain.dto.CategoryDTO;
-import br.com.eventmanager.domain.dto.EventDTO;
 import br.com.eventmanager.domain.dto.EventRequestDTO;
 import br.com.eventmanager.domain.dto.LocationDTO;
 import org.mapstruct.*;

@@ -4,11 +4,13 @@ import br.com.eventmanager.adapter.outbound.persistence.LocationRepository;
 import br.com.eventmanager.domain.Location;
 import br.com.eventmanager.domain.dto.LocationDTO;
 import br.com.eventmanager.domain.mapper.EventMapper;
-import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.stream.Collectors;

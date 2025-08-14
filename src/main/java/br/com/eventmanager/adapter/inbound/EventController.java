@@ -4,7 +4,6 @@ import br.com.eventmanager.application.service.EventService;
 import br.com.eventmanager.domain.Event;
 import br.com.eventmanager.domain.dto.EventDTO;
 import br.com.eventmanager.domain.dto.EventRequestDTO;
-import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
