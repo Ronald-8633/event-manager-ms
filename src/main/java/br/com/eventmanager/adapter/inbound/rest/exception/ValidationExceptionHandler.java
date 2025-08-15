@@ -8,6 +8,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.nio.file.AccessDeniedException;
 import java.util.ArrayList;
 
 @RestControllerAdvice
@@ -44,6 +45,17 @@ public class ValidationExceptionHandler {
                 .details(new ArrayList<>(0))
                 .message(ex.getMessage())
                 .statusCode(HttpStatus.UNPROCESSABLE_ENTITY.value())
+                .build();
+
+        return ResponseEntity.unprocessableEntity().body(errorDTO);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorDTO> handleValidationExceptions(AccessDeniedException ex) {
+        var errorDTO = ErrorDTO.builder()
+                .details(new ArrayList<>(0))
+                .message(ex.getMessage())
+                .statusCode(HttpStatus.FORBIDDEN.value())
                 .build();
 
         return ResponseEntity.unprocessableEntity().body(errorDTO);

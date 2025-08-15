@@ -1,7 +1,5 @@
 server:
   port: 8080
-  servlet:
-    context-path: /api
 
 spring:
   application:
@@ -23,6 +21,9 @@ springdoc:
     operations-sorter: method
     tags-sorter: alpha
     try-it-out-enabled: true
+jwt:
+  secret: suaChaveSecretaMuitoLongaEAleatoriaAqui123456789
+  expiration: 86400000
 
 logging:
   level:
