@@ -18,8 +18,8 @@ public class EventDTO {
     private String id;
     private String title;
     private String description;
-    private CategoryDTO categoryCode;
-    private LocationDTO locationCode;
+    private CategoryDTO category;
+    private LocationDTO location;
     private LocalDateTime startDate;
     private LocalDateTime endDate;
     private Integer maxCapacity;

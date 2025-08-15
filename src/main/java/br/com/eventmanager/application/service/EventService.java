@@ -1,25 +1,29 @@
 package br.com.eventmanager.application.service;
 
+import br.com.eventmanager.adapter.inbound.rest.exception.BusinessException;
 import br.com.eventmanager.adapter.outbound.persistence.CategoryRepository;
 import br.com.eventmanager.adapter.outbound.persistence.EventRepository;
 import br.com.eventmanager.adapter.outbound.persistence.LocationRepository;
 import br.com.eventmanager.domain.Category;
 import br.com.eventmanager.domain.Event;
 import br.com.eventmanager.domain.Location;
-import br.com.eventmanager.domain.dto.CategoryDTO;
-import br.com.eventmanager.domain.dto.EventDTO;
-import br.com.eventmanager.domain.dto.EventRequestDTO;
-import br.com.eventmanager.domain.dto.LocationDTO;
+import br.com.eventmanager.domain.dto.*;
 import br.com.eventmanager.domain.mapper.EventMapper;
+import br.com.eventmanager.shared.Constants;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+
+import static br.com.eventmanager.shared.Constants.*;
 
 @Slf4j
 @Service
@@ -30,19 +34,22 @@ public class EventService {
     private final CategoryRepository categoryRepository;
     private final LocationRepository locationRepository;
     private final EventMapper eventMapper;
-    
-    public Event createEvent(Event event) {
-        event.setCreatedAt(LocalDateTime.now());
-        event.setUpdatedAt(LocalDateTime.now());
-        event.setStatus(Event.EventStatus.DRAFT);
-        event.setCurrentCapacity(0);
-        
-        log.info("Creating new event: {}", event.getTitle());
+    private final MessageService messageService;
+    private final PublishingValidationService publishingValidationService;
+    private final AttendeeValidationChainService attendeeValidationChainService;
+
+    public Event createEvent(EventRequestDTO eventRequest) {
+
+        validateEventCreation(eventRequest);
+
+        eventRequest.setCreatedAt(LocalDateTime.now());
+        eventRequest.setUpdatedAt(LocalDateTime.now());
+        eventRequest.setStatus(Event.EventStatus.DRAFT);
+        eventRequest.setCurrentCapacity(0);
+
+        Event event = new Event();
+        eventMapper.toEvent(eventRequest, event);
         return eventRepository.save(event);
-    }
-    
-    public Optional<Event> findById(String id) {
-        return eventRepository.findById(id);
     }
     
     public Optional<EventDTO> findEventDTOById(String id) {
@@ -52,10 +59,6 @@ public class EventService {
                     Location location = locationRepository.findByLocationCode(event.getLocationCode()).orElse(null);
                     return buildEventDTO(event, category, location);
                 });
-    }
-    
-    public List<Event> findAll() {
-        return eventRepository.findAll();
     }
     
     public List<EventDTO> findAllEventDTOs() {
@@ -75,15 +78,11 @@ public class EventService {
     public List<EventDTO> findEventDTOsByCategory(String category) {
         return eventRepository.findByCategoryCode(category).stream()
                 .map(event -> {
-                    Category categoryEntity = categoryRepository.findById(event.getCategoryCode()).orElse(null);
-                    Location location = locationRepository.findById(event.getLocationCode()).orElse(null);
+                    Category categoryEntity = categoryRepository.findByCategoryCode(event.getCategoryCode()).orElse(null);
+                    Location location = locationRepository.findByLocationCode(event.getLocationCode()).orElse(null);
                     return buildEventDTO(event, categoryEntity, location);
                 })
                 .collect(Collectors.toList());
-    }
-    
-    public List<Event> findByStatus(Event.EventStatus status) {
-        return eventRepository.findByStatus(status);
     }
     
     public List<EventDTO> findEventDTOsByStatus(Event.EventStatus status) {
@@ -94,48 +93,127 @@ public class EventService {
                 })
                 .collect(Collectors.toList());
     }
-    
+
     public Event updateEvent(String id, EventRequestDTO eventDetails) {
         return eventRepository.findById(id)
                 .map(existingEvent -> {
+                    validateEventUpdate(existingEvent, eventDetails);
+
                     eventMapper.toEvent(eventDetails, existingEvent);
+
+                    validateEventAfterUpdate(existingEvent);
+
+                    existingEvent.setUpdatedAt(LocalDateTime.now());
+
                     log.info("Updating event: {}", id);
                     return eventRepository.save(existingEvent);
                 })
-                .orElseThrow(() -> new RuntimeException("Event not found with id: " + id));
+                .orElseThrow(() -> new BusinessException(messageService.getMessage(EM_0008, id)));
     }
     
     public void deleteEvent(String id) {
         log.info("Deleting event: {}", id);
         eventRepository.deleteById(id);
     }
-    
+
     public Event publishEvent(String id) {
         return eventRepository.findById(id)
                 .map(event -> {
+                    if (event.getStatus() != Event.EventStatus.DRAFT) {
+                        throw new BusinessException(messageService.getMessage(Constants.EM_0012));
+                    }
+
+                    publishingValidationService.validateForPublishing(event);
+
+                    // Validações específicas de datas (que não se encaixam no padrão das regras)
+                    validateEventForPublishing(event);
+
                     event.setStatus(Event.EventStatus.PUBLISHED);
                     event.setUpdatedAt(LocalDateTime.now());
+
                     log.info("Publishing event: {}", id);
                     return eventRepository.save(event);
                 })
-                .orElseThrow(() -> new RuntimeException("Event not found with id: " + id));
+                .orElseThrow(() -> new BusinessException(messageService.getMessage(Constants.EM_0008, id)));
     }
-    
-    public boolean addAttendee(String eventId, String userId) {
-        return eventRepository.findById(eventId)
+
+    public Event cancelEvent(String id) {
+        return eventRepository.findById(id)
                 .map(event -> {
-                    if (event.getCurrentCapacity() < event.getMaxCapacity()) {
-                        addAttendee(userId, event);
-                        event.setCurrentCapacity(event.getCurrentCapacity() + 1);
-                        event.setUpdatedAt(LocalDateTime.now());
-                        eventRepository.save(event);
-                        log.info("Added attendee {} to event {}", userId, eventId);
-                        return true;
+                    if (event.getStatus() != Event.EventStatus.PUBLISHED) {
+                        throw new BusinessException(messageService.getMessage(EM_0013));
                     }
-                    log.warn("Event {} is at full capacity", eventId);
-                    return false;
+
+                    if (event.getAttendees() != null && !event.getAttendees().isEmpty()) {
+                        log.warn("Cancelling event {} with {} attendees", id, event.getAttendees().size());
+                        //TODO implementar notificação aos participantes
+                    }
+
+                    event.setStatus(Event.EventStatus.CANCELLED);
+                    event.setUpdatedAt(LocalDateTime.now());
+
+                    log.info("Cancelling event: {}", id);
+                    return eventRepository.save(event);
                 })
-                .orElse(false);
+                .orElseThrow(() -> new BusinessException(messageService.getMessage(EM_0008))
+);
+    }
+
+    @Scheduled(fixedRate = 3600000)
+    public void completeExpiredEvents() {
+        LocalDateTime now = LocalDateTime.now();
+
+        List<Event> publishedEvents = eventRepository.findByStatus(Event.EventStatus.PUBLISHED);
+
+        for (Event event : publishedEvents) {
+            if (event.getEndDate().isBefore(now)) {
+                event.setStatus(Event.EventStatus.COMPLETED);
+                event.setUpdatedAt(now);
+                eventRepository.save(event);
+                log.info("Event {} marked as completed", event.getId());
+            }
+        }
+    }
+
+    private void validateEventForPublishing(Event event) {
+        validateEventDates(event.getStartDate(), event.getEndDate());
+    }
+
+    public ResultDTO<AttendeeResponseDTO> addAttendee(String eventId, String userId) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new BusinessException(messageService.getMessage(EM_0008, eventId)));
+
+        AttendeeResponseDTO validationError = attendeeValidationChainService.validate(event, userId);
+        if (validationError != null) {
+            return ResultDTO.failure(validationError.getMessage());
+        }
+
+        addAttendee(userId, event);
+        event.setCurrentCapacity(event.getCurrentCapacity() + 1);
+        event.setUpdatedAt(LocalDateTime.now());
+
+        eventRepository.save(event);
+
+        log.info("Added attendee {} to event {}", userId, eventId);
+
+        AttendeeResponseDTO successResponse = buildAttendeeResponse(event, userId, true,
+                "Usuário inscrito com sucesso no evento!");
+
+        return ResultDTO.success(successResponse);
+    }
+
+    private AttendeeResponseDTO buildAttendeeResponse(Event event, String userId, boolean success, String message) {
+        return AttendeeResponseDTO.builder()
+                .eventId(event.getId())
+                .eventTitle(event.getTitle())
+                .userId(userId)
+                .success(success)
+                .message(message)
+                .registeredAt(success ? LocalDateTime.now() : null)
+                .currentCapacity(event.getCurrentCapacity())
+                .maxCapacity(event.getMaxCapacity())
+                .remainingSpots(event.getMaxCapacity() - event.getCurrentCapacity())
+                .build();
     }
 
     private void addAttendee(String userId, Event event) {
@@ -153,8 +231,8 @@ public class EventService {
                 .id(event.getId())
                 .title(event.getTitle())
                 .description(event.getDescription())
-                .categoryCode(categoryDTO)
-                .locationCode(locationDTO)
+                .category(categoryDTO)
+                .location(locationDTO)
                 .startDate(event.getStartDate())
                 .endDate(event.getEndDate())
                 .maxCapacity(event.getMaxCapacity())
@@ -168,5 +246,74 @@ public class EventService {
                 .createdAt(event.getCreatedAt())
                 .updatedAt(event.getUpdatedAt())
                 .build();
+    }
+
+    private void validateEventCreation(EventRequestDTO event) {
+        validateEventDates(event.getStartDate(), event.getEndDate());
+        validateEventTags(event.getTags());
+        initiateLists(event);
+    }
+
+    private static void initiateLists(EventRequestDTO event) {
+        if (event.getTags() == null) {
+            event.setTags(new ArrayList<>());
+        }
+        if (event.getAttendees() == null) {
+            event.setAttendees(new HashSet<>());
+        }
+    }
+
+    private void validateEventDates(LocalDateTime startDate, LocalDateTime endDate) {
+        LocalDateTime now = LocalDateTime.now();
+
+        if (startDate.isBefore(now)) {
+            throw new BusinessException(messageService.getMessage(EM_0001));
+        }
+
+        if (endDate.isBefore(startDate)) {
+            throw new BusinessException(messageService.getMessage(EM_0002));
+        }
+
+        Duration duration = Duration.between(startDate, endDate);
+        if (duration.toHours() < 1) {
+            throw new BusinessException(messageService.getMessage(EM_0003));
+        }
+
+        if (duration.toDays() > 7) {
+            throw new BusinessException(messageService.getMessage(EM_0004));
+        }
+    }
+
+    private void validateEventTags(List<String> tags) {
+        if (tags != null) {
+            if (tags.size() > 10) {
+                throw new BusinessException(messageService.getMessage(EM_0005));
+            }
+        }
+    }
+
+    private void validateEventUpdate(Event existingEvent, EventRequestDTO eventDetails) {
+        if (existingEvent.getStatus() == Event.EventStatus.PUBLISHED) {
+            validatePublishedEventUpdate(eventDetails);
+        }
+
+        if (existingEvent.getStatus() == Event.EventStatus.CANCELLED ||
+                existingEvent.getStatus() == Event.EventStatus.COMPLETED) {
+            throw new BusinessException(messageService.getMessage(EM_0007, existingEvent.getStatus().name()));
+        }
+    }
+
+    private void validatePublishedEventUpdate(EventRequestDTO eventDetails) {
+        if (eventDetails.getStartDate() != null && eventDetails.getStartDate().isBefore(LocalDateTime.now())) {
+            throw new BusinessException(messageService.getMessage(EM_0006));
+        }
+    }
+
+    private void validateEventAfterUpdate(Event event) {
+        if (event.getStartDate() != null && event.getEndDate() != null) {
+            validateEventDates(event.getStartDate(), event.getEndDate());
+        }
+
+        validateEventTags(event.getTags());
     }
 }

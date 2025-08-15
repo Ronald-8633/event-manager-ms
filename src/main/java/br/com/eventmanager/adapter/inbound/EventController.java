@@ -2,9 +2,12 @@ package br.com.eventmanager.adapter.inbound;
 
 import br.com.eventmanager.application.service.EventService;
 import br.com.eventmanager.domain.Event;
+import br.com.eventmanager.domain.dto.AttendeeResponseDTO;
 import br.com.eventmanager.domain.dto.EventDTO;
 import br.com.eventmanager.domain.dto.EventRequestDTO;
+import br.com.eventmanager.domain.dto.ResultDTO;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,7 +24,7 @@ public class EventController {
     private final EventService eventService;
     
     @PostMapping
-    public ResponseEntity<Event> createEvent(@RequestBody Event event) {
+    public ResponseEntity<Event> createEvent(@RequestBody @Valid EventRequestDTO event) {
         Event createdEvent = eventService.createEvent(event);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdEvent);
     }
@@ -50,15 +53,11 @@ public class EventController {
         List<EventDTO> events = eventService.findEventDTOsByStatus(status);
         return ResponseEntity.ok(events);
     }
-    
+
     @PutMapping("/{id}")
     public ResponseEntity<Event> updateEvent(@PathVariable String id, @RequestBody EventRequestDTO eventDetails) {
-        try {
-            Event updatedEvent = eventService.updateEvent(id, eventDetails);
-            return ResponseEntity.ok(updatedEvent);
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        Event updatedEvent = eventService.updateEvent(id, eventDetails);
+        return ResponseEntity.ok(updatedEvent);
     }
     
     @DeleteMapping("/{id}")
@@ -66,24 +65,29 @@ public class EventController {
         eventService.deleteEvent(id);
         return ResponseEntity.noContent().build();
     }
-    
+
     @PostMapping("/{id}/publish")
     public ResponseEntity<Event> publishEvent(@PathVariable String id) {
-        try {
-            Event publishedEvent = eventService.publishEvent(id);
-            return ResponseEntity.ok(publishedEvent);
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+
+        Event publishedEvent = eventService.publishEvent(id);
+
+        return ResponseEntity.ok(publishedEvent);
     }
-    
+
     @PostMapping("/{id}/attendees/{userId}")
-    public ResponseEntity<Boolean> addAttendee(@PathVariable String id, @PathVariable String userId) {
-        boolean success = eventService.addAttendee(id, userId);
-        if (success) {
-            return ResponseEntity.ok(true);
+    public ResponseEntity<AttendeeResponseDTO> addAttendee(@PathVariable String id, @PathVariable String userId) {
+        ResultDTO<AttendeeResponseDTO> resultDTO = eventService.addAttendee(id, userId);
+
+        if (resultDTO.isSuccess()) {
+            return ResponseEntity.ok(resultDTO.getData());
         } else {
-            return ResponseEntity.badRequest().body(false);
+            return ResponseEntity.badRequest()
+                    .body(AttendeeResponseDTO.builder()
+                            .eventId(id)
+                            .userId(userId)
+                            .success(false)
+                            .message(resultDTO.getError())
+                            .build());
         }
     }
 }

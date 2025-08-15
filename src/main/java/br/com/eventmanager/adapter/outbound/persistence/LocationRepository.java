@@ -21,4 +21,6 @@ public interface LocationRepository extends MongoRepository<Location, String> {
     List<Location> findByCity(String city);
     
     List<Location> findByCapacityGreaterThanEqual(Integer capacity);
+
+    Boolean existsByLocationCode(String code);
 }
