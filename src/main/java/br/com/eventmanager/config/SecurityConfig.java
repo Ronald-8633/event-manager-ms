@@ -4,6 +4,8 @@ import br.com.eventmanager.adapter.outbound.persistence.UserRepository;
 import br.com.eventmanager.application.service.JwtService;
 import br.com.eventmanager.domain.security.UserPrincipal;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -109,7 +111,10 @@ public class SecurityConfig {
                                     "path", request.getRequestURI()
                             );
 
-                            new ObjectMapper().writeValue(response.getOutputStream(), error);
+                            new ObjectMapper()
+                                    .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+                                    .registerModule(new JavaTimeModule())
+                                    .writeValue(response.getOutputStream(), error);
                         })
                         .accessDeniedHandler((request, response, accessDeniedException) -> {
                             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
@@ -123,7 +128,10 @@ public class SecurityConfig {
                                     "path", request.getRequestURI()
                             );
 
-                            new ObjectMapper().writeValue(response.getOutputStream(), error);
+                            new ObjectMapper()
+                                    .registerModule(new JavaTimeModule())
+                                    .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+                                    .writeValue(response.getOutputStream(), error);
                         })
                 );
 

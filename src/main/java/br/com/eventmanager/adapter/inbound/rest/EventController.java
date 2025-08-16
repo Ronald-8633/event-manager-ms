@@ -1,4 +1,4 @@
-package br.com.eventmanager.adapter.inbound;
+package br.com.eventmanager.adapter.inbound.rest;
 
 import br.com.eventmanager.application.service.EventService;
 import br.com.eventmanager.domain.Event;

@@ -38,10 +38,10 @@ public class AuthService {
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .phone(request.getPhone())
-                .role(User.UserRole.USER)
                 .status(User.UserStatus.ACTIVE)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
+                .role(request.getRole())
                 .build();
 
         userRepository.save(user);

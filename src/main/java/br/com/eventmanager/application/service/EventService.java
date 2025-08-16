@@ -7,8 +7,10 @@ import br.com.eventmanager.adapter.outbound.persistence.LocationRepository;
 import br.com.eventmanager.domain.Category;
 import br.com.eventmanager.domain.Event;
 import br.com.eventmanager.domain.Location;
+import br.com.eventmanager.domain.User;
 import br.com.eventmanager.domain.dto.*;
 import br.com.eventmanager.domain.mapper.EventMapper;
+import br.com.eventmanager.domain.security.Permission;
 import br.com.eventmanager.shared.Constants;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,11 +39,17 @@ public class EventService {
     private final MessageService messageService;
     private final PublishingValidationService publishingValidationService;
     private final AttendeeValidationChainService attendeeValidationChainService;
+    private final PermissionAuthorizationService permissionAuthorizationService;
+    private final UserService userService;
 
     public Event createEvent(EventRequestDTO eventRequest) {
 
+        permissionAuthorizationService.validatePermission(Permission.EVENT_CREATE);
+
         validateEventCreation(eventRequest);
 
+        String currentUserEmail = permissionAuthorizationService.getCurrentUser().getEmail();
+        eventRequest.setOrganizerId(currentUserEmail);
         eventRequest.setCreatedAt(LocalDateTime.now());
         eventRequest.setUpdatedAt(LocalDateTime.now());
         eventRequest.setStatus(Event.EventStatus.DRAFT);
@@ -49,20 +57,29 @@ public class EventService {
 
         Event event = new Event();
         eventMapper.toEvent(eventRequest, event);
-        return eventRepository.save(event);
+        var savedEvent = eventRepository.save(event);
+        User currentUser = userService.findByEmail(currentUserEmail);
+        userService.addOrganizedEvent(currentUser.getId(), savedEvent.getId());
+        return savedEvent;
     }
-    
+
     public Optional<EventDTO> findEventDTOById(String id) {
-        return eventRepository.findById(id)
-                .map(event -> {
-                    Category category = categoryRepository.findByCategoryCode(event.getCategoryCode()).orElse(null);
-                    Location location = locationRepository.findByLocationCode(event.getLocationCode()).orElse(null);
-                    return buildEventDTO(event, category, location);
-                });
+        Event event = eventRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(messageService.getMessage(EM_0008, id)));
+
+        permissionAuthorizationService.validateEventVisibility(event);
+
+        Category category = categoryRepository.findByCategoryCode(event.getCategoryCode()).orElse(null);
+        Location location = locationRepository.findByLocationCode(event.getLocationCode()).orElse(null);
+
+        return Optional.of(buildEventDTO(event, category, location));
     }
-    
+
     public List<EventDTO> findAllEventDTOs() {
-        return eventRepository.findAll().stream()
+        List<Event> events = eventRepository.findAll();
+
+        return events.stream()
+                .filter(this::filterByPermission)
                 .map(event -> {
                     Category category = categoryRepository.findByCategoryCode(event.getCategoryCode()).orElse(null);
                     Location location = locationRepository.findByLocationCode(event.getLocationCode()).orElse(null);
@@ -71,12 +88,9 @@ public class EventService {
                 .collect(Collectors.toList());
     }
     
-    public List<Event> findByCategoryCode(String category) {
-        return eventRepository.findByCategoryCode(category);
-    }
-    
     public List<EventDTO> findEventDTOsByCategory(String category) {
         return eventRepository.findByCategoryCode(category).stream()
+                .filter(this::filterByPermission)
                 .map(event -> {
                     Category categoryEntity = categoryRepository.findByCategoryCode(event.getCategoryCode()).orElse(null);
                     Location location = locationRepository.findByLocationCode(event.getLocationCode()).orElse(null);
@@ -87,6 +101,7 @@ public class EventService {
     
     public List<EventDTO> findEventDTOsByStatus(Event.EventStatus status) {
         return eventRepository.findByStatus(status).stream()
+                .filter(this::filterByPermission)
                 .map(event -> {
                     Category category = categoryRepository.findById(event.getCategoryCode()).orElse(null);
                     return buildEventDTO(event, category, null);
@@ -94,26 +109,43 @@ public class EventService {
                 .collect(Collectors.toList());
     }
 
-    public Event updateEvent(String id, EventRequestDTO eventDetails) {
-        return eventRepository.findById(id)
-                .map(existingEvent -> {
-                    validateEventUpdate(existingEvent, eventDetails);
-
-                    eventMapper.toEvent(eventDetails, existingEvent);
-
-                    validateEventAfterUpdate(existingEvent);
-
-                    existingEvent.setUpdatedAt(LocalDateTime.now());
-
-                    log.info("Updating event: {}", id);
-                    return eventRepository.save(existingEvent);
-                })
-                .orElseThrow(() -> new BusinessException(messageService.getMessage(EM_0008, id)));
+    private boolean filterByPermission(Event event) {
+        try {
+            permissionAuthorizationService.validateEventVisibility(event);
+            return true;
+        } catch (BusinessException e) {
+            return false;
+        }
     }
-    
+
+    public Event updateEvent(String id, EventRequestDTO eventDetails) {
+        Event existingEvent = eventRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(messageService.getMessage(EM_0008, id)));
+
+        permissionAuthorizationService.validateEventModification(existingEvent);
+
+        validateEventUpdate(existingEvent, eventDetails);
+        eventMapper.toEvent(eventDetails, existingEvent);
+        validateEventAfterUpdate(existingEvent);
+
+        existingEvent.setUpdatedAt(LocalDateTime.now());
+
+        return eventRepository.save(existingEvent);
+    }
+
     public void deleteEvent(String id) {
-        log.info("Deleting event: {}", id);
-        eventRepository.deleteById(id);
+        Event event = eventRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(messageService.getMessage("EM-0008", id)));
+
+        permissionAuthorizationService.validatePermission(Permission.EVENT_DELETE);
+
+        if (event.getOrganizerId() != null) {
+
+            User organizer = userService.findByEmail(event.getOrganizerId());
+            userService.removeOrganizedEvent(organizer.getId(), id);
+
+            eventRepository.deleteById(id);
+        }
     }
 
     public Event publishEvent(String id) {
@@ -123,9 +155,9 @@ public class EventService {
                         throw new BusinessException(messageService.getMessage(Constants.EM_0012));
                     }
 
+                    permissionAuthorizationService.validateEventModification(event);
                     publishingValidationService.validateForPublishing(event);
 
-                    // Validações específicas de datas (que não se encaixam no padrão das regras)
                     validateEventForPublishing(event);
 
                     event.setStatus(Event.EventStatus.PUBLISHED);
@@ -138,25 +170,19 @@ public class EventService {
     }
 
     public Event cancelEvent(String id) {
-        return eventRepository.findById(id)
-                .map(event -> {
-                    if (event.getStatus() != Event.EventStatus.PUBLISHED) {
-                        throw new BusinessException(messageService.getMessage(EM_0013));
-                    }
+        Event event = eventRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(messageService.getMessage("EM-0008", id)));
 
-                    if (event.getAttendees() != null && !event.getAttendees().isEmpty()) {
-                        log.warn("Cancelling event {} with {} attendees", id, event.getAttendees().size());
-                        //TODO implementar notificação aos participantes
-                    }
+        permissionAuthorizationService.validateEventModification(event);
 
-                    event.setStatus(Event.EventStatus.CANCELLED);
-                    event.setUpdatedAt(LocalDateTime.now());
+        if (event.getStatus() != Event.EventStatus.PUBLISHED) {
+            throw new BusinessException(messageService.getMessage("EM-0013"));
+        }
 
-                    log.info("Cancelling event: {}", id);
-                    return eventRepository.save(event);
-                })
-                .orElseThrow(() -> new BusinessException(messageService.getMessage(EM_0008))
-);
+        event.setStatus(Event.EventStatus.CANCELLED);
+        event.setUpdatedAt(LocalDateTime.now());
+
+        return eventRepository.save(event);
     }
 
     @Scheduled(fixedRate = 3600000)
@@ -165,14 +191,14 @@ public class EventService {
 
         List<Event> publishedEvents = eventRepository.findByStatus(Event.EventStatus.PUBLISHED);
 
-        for (Event event : publishedEvents) {
-            if (event.getEndDate().isBefore(now)) {
-                event.setStatus(Event.EventStatus.COMPLETED);
-                event.setUpdatedAt(now);
-                eventRepository.save(event);
-                log.info("Event {} marked as completed", event.getId());
-            }
-        }
+        publishedEvents.stream()
+                .filter(event -> event.getEndDate().isBefore(now))
+                .forEach(event -> {
+                    event.setStatus(Event.EventStatus.COMPLETED);
+                    event.setUpdatedAt(now);
+                    eventRepository.save(event);
+                    log.info("Event {} marked as completed", event.getId());
+                });
     }
 
     private void validateEventForPublishing(Event event) {
@@ -182,6 +208,8 @@ public class EventService {
     public ResultDTO<AttendeeResponseDTO> addAttendee(String eventId, String userId) {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new BusinessException(messageService.getMessage(EM_0008, eventId)));
+
+        permissionAuthorizationService.validateEventModification(event);
 
         AttendeeResponseDTO validationError = attendeeValidationChainService.validate(event, userId);
         if (validationError != null) {

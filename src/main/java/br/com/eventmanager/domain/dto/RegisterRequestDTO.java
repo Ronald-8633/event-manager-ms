@@ -1,5 +1,6 @@
 package br.com.eventmanager.domain.dto;
 
+import br.com.eventmanager.domain.User;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -26,4 +27,6 @@ public class RegisterRequestDTO {
     private String password;
 
     private String phone;
+
+    private User.UserRole role;
 }
