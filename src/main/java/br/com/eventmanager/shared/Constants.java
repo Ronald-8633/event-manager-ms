@@ -28,6 +28,7 @@ public class Constants {
     public static final String  EM_0020 = "EM-0020";
     public static final String  EM_0021 = "EM-0021";
     public static final String  EM_0022 = "EM-0022";
+    public static final String  EM_0023 = "EM-0023";
 
     // Broker Constantss
     public static final String SUBSCRIBE_EVENT_CANCEL = "subscribeEventCancel-in-0";
