@@ -12,6 +12,47 @@ spring:
   profiles:
     active: dev
 
+  rabbitmq:
+    addresses: 'localhost:5672'
+    username: ${USUARIO}
+    password: ${SENHA}
+    virtual-host: '/'
+
+  cloud:
+    function:
+      definition: subscribeEventCancel
+
+    stream:
+      bindings:
+        subscribeEventCancel-in-0:
+          destination: x-event-cancel
+          group: q-event-manager-event-cancel
+          consumer:
+            maxAttempts: 1
+            default-requeue-rejected: false
+
+        publishEstablishmentContractPendencyProcessedExchange:
+          destination: x-establishment-contract-pendency-processed
+
+      rabbit:
+        bindings:
+
+          subscribeEventCancel-in-0:
+            consumer:
+              republish-to-dlq: true
+              auto-bind-dlq: true
+              dlq-ttl: 30000
+              exchange-type: fanout
+              deadLetterExchange: x-event-manager-event-cancel-error
+
+
+          publishEstablishmentContractPendencyProcessedExchange:
+            producer:
+              exchangeType: fanout
+
+      binders:
+        rabbitMQ:
+          type: rabbit
 
 springdoc:
   api-docs:

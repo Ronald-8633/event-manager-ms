@@ -10,12 +10,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import static br.com.eventmanager.shared.Constants.*;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class PermissionAuthorizationService {
     private final RolePermissionMapper rolePermissionMapper;
     private final UserService userService;
+    private final MessageService messageService;
 
     public void validatePermission(Permission permission) {
         String userEmail = getCurrentUserEmail();
@@ -23,7 +26,7 @@ public class PermissionAuthorizationService {
 
         if (!rolePermissionMapper.hasPermission(user.getRole(), permission)) {
             log.warn("User {} attempted to access resource requiring permission: {}", userEmail, permission);
-            throw new BusinessException("Insufficient permissions. Required: " + permission);
+            throw new BusinessException(messageService.getMessage(EM_0016, permission.name()));
         }
     }
 
@@ -41,11 +44,11 @@ public class PermissionAuthorizationService {
                     user.getOrganizedEvents().contains(event.getId())) {
                 return;
             }
-            throw new BusinessException("Draft events are not visible to regular users");
+            throw new BusinessException(messageService.getMessage(EM_0017));
         }
 
         if (event.getStatus() == Event.EventStatus.CANCELLED) {
-            throw new BusinessException("Cancelled events are not visible to regular users");
+            throw new BusinessException(messageService.getMessage(EM_0018));
         }
     }
 
@@ -68,16 +71,16 @@ public class PermissionAuthorizationService {
 
         if (user.getRole() == User.UserRole.ORGANIZER) {
             if (!user.getOrganizedEvents().contains(event.getId())) {
-                throw new BusinessException("You can only modify events you have organized");
+                throw new BusinessException(messageService.getMessage(EM_0019));
             }
 
             if (event.getStatus() == Event.EventStatus.PUBLISHED) {
-                throw new BusinessException("Published events cannot be modified by organizers");
+                throw new BusinessException(messageService.getMessage(EM_0020));
             }
         }
 
         if (user.getRole() == User.UserRole.USER) {
-            throw new BusinessException("Users cannot modify events");
+            throw new BusinessException(messageService.getMessage(EM_0021));
         }
     }
 }

@@ -11,17 +11,19 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 
-import static java.time.LocalDateTime.*;
+import static br.com.eventmanager.shared.Constants.EM_0022;
+import static java.time.LocalDateTime.now;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserService {
     private final UserRepository userRepository;
+    private final MessageService messageService;
 
     public User findByEmail(String email) {
         return userRepository.findByEmail(email)
-                .orElseThrow(() -> new BusinessException("User not found: " + email));
+                .orElseThrow(() -> new BusinessException(messageService.getMessage(EM_0022,email)));
     }
 
     public Optional<User> findById(String id) {
@@ -34,14 +36,14 @@ public class UserService {
 
     public void deleteUser(String id) {
         if (!userRepository.existsById(id)) {
-            throw new BusinessException("User not found: " + id);
+            throw new BusinessException(messageService.getMessage(EM_0022,id));
         }
         userRepository.deleteById(id);
     }
 
     public void addOrganizedEvent(String userId, String eventId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new BusinessException("User not found: " + userId));
+                .orElseThrow(() -> new BusinessException(messageService.getMessage(EM_0022,userId)));
 
         if (user.getOrganizedEvents() == null) {
             user.setOrganizedEvents(new HashSet<>());
@@ -55,7 +57,7 @@ public class UserService {
 
     public void removeOrganizedEvent(String userId, String eventId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new BusinessException("User not found: " + userId));
+                .orElseThrow(() -> new BusinessException(messageService.getMessage(EM_0022,userId)));
 
         if (user.getOrganizedEvents() != null) {
             user.getOrganizedEvents().remove(eventId);

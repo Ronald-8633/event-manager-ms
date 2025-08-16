@@ -19,4 +19,17 @@ public class Constants {
     public static final String  EM_0011 = "EM-0011";
     public static final String  EM_0012 = "EM-0012";
     public static final String  EM_0013 = "EM-0013";
+    public static final String  EM_0014 = "EM-0014";
+    public static final String  EM_0015 = "EM-0015";
+    public static final String  EM_0016 = "EM-0016";
+    public static final String  EM_0017 = "EM-0017";
+    public static final String  EM_0018 = "EM-0018";
+    public static final String  EM_0019 = "EM-0019";
+    public static final String  EM_0020 = "EM-0020";
+    public static final String  EM_0021 = "EM-0021";
+    public static final String  EM_0022 = "EM-0022";
+
+    // Broker Constantss
+    public static final String SUBSCRIBE_EVENT_CANCEL = "subscribeEventCancel-in-0";
+    public static final String RETRIES = "retries";
 }

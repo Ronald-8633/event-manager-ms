@@ -135,7 +135,7 @@ public class EventService {
 
     public void deleteEvent(String id) {
         Event event = eventRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(messageService.getMessage("EM-0008", id)));
+                .orElseThrow(() -> new BusinessException(messageService.getMessage(EM_0008, id)));
 
         permissionAuthorizationService.validatePermission(Permission.EVENT_DELETE);
 
@@ -169,20 +169,18 @@ public class EventService {
                 .orElseThrow(() -> new BusinessException(messageService.getMessage(Constants.EM_0008, id)));
     }
 
-    public Event cancelEvent(String id) {
+    public void cancelEvent(String id) {
         Event event = eventRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(messageService.getMessage("EM-0008", id)));
-
-        permissionAuthorizationService.validateEventModification(event);
+                .orElseThrow(() -> new BusinessException(messageService.getMessage(EM_0008, id)));
 
         if (event.getStatus() != Event.EventStatus.PUBLISHED) {
-            throw new BusinessException(messageService.getMessage("EM-0013"));
+            throw new BusinessException(messageService.getMessage(EM_0013));
         }
 
         event.setStatus(Event.EventStatus.CANCELLED);
         event.setUpdatedAt(LocalDateTime.now());
 
-        return eventRepository.save(event);
+        eventRepository.save(event);
     }
 
     @Scheduled(fixedRate = 3600000)

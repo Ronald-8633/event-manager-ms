@@ -15,8 +15,6 @@ public interface CategoryRepository extends MongoRepository<Category, String> {
     Optional<Category> findByCategoryCode(String name);
 
     List<Category> findByIsActiveTrue();
-    
-    List<Category> findByIsActive(Boolean isActive);
 
     Boolean existsByCategoryCode(String code);
 }

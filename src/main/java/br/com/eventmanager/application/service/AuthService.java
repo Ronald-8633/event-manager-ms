@@ -16,6 +16,9 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 
+import static br.com.eventmanager.shared.Constants.EM_0014;
+import static br.com.eventmanager.shared.Constants.EM_0015;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -25,12 +28,13 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
+    private final MessageService messageService;
 
     public AuthResponseDTO register(RegisterRequestDTO request) {
         log.info("Registering new user: {}", request.getEmail());
 
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new BusinessException("Email already in use");
+            throw new BusinessException(messageService.getMessage(EM_0014));
         }
 
         User user = User.builder()
@@ -66,7 +70,7 @@ public class AuthService {
         );
 
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new BusinessException("User not found"));
+                .orElseThrow(() -> new BusinessException(messageService.getMessage(EM_0015)));
 
         String token = jwtService.generateToken(new UserPrincipal(user));
         log.info("User logged in successfully: {}", user.getEmail());

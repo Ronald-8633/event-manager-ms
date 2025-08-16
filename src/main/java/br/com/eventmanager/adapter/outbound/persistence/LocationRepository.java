@@ -10,13 +10,9 @@ import java.util.Optional;
 @Repository
 public interface LocationRepository extends MongoRepository<Location, String> {
     
-    Optional<Location> findByName(String name);
-
     Optional<Location> findByLocationCode(String name);
 
     List<Location> findByIsActiveTrue();
-    
-    List<Location> findByIsActive(Boolean isActive);
     
     List<Location> findByCity(String city);
     
