@@ -41,6 +41,7 @@ public class EventService {
     private final AttendeeValidationChainService attendeeValidationChainService;
     private final PermissionAuthorizationService permissionAuthorizationService;
     private final UserService userService;
+    private final AuditService auditService;
 
     public Event createEvent(EventRequestDTO eventRequest) {
 
@@ -58,6 +59,10 @@ public class EventService {
         Event event = new Event();
         eventMapper.toEvent(eventRequest, event);
         var savedEvent = eventRepository.save(event);
+
+        auditService.logChange("Event", savedEvent.getId(), "CREATE", null, null, null,
+                permissionAuthorizationService.getCurrentUser().getEmail());
+
         User currentUser = userService.findByEmail(currentUserEmail);
         userService.addOrganizedEvent(currentUser.getId(), savedEvent.getId());
         return savedEvent;
@@ -125,10 +130,19 @@ public class EventService {
         permissionAuthorizationService.validateEventModification(existingEvent);
 
         validateEventUpdate(existingEvent, eventDetails);
+
+        String oldTitle = existingEvent.getTitle();
+        String oldDescription = existingEvent.getDescription();
+        LocalDateTime oldStartDate = existingEvent.getStartDate();
+        LocalDateTime oldEndDate = existingEvent.getEndDate();
+
+
         eventMapper.toEvent(eventDetails, existingEvent);
         validateEventAfterUpdate(existingEvent);
 
         existingEvent.setUpdatedAt(LocalDateTime.now());
+
+        logChangesForUpdate(id, oldTitle, existingEvent, oldDescription, oldStartDate, oldEndDate);
 
         return eventRepository.save(existingEvent);
     }
@@ -143,6 +157,9 @@ public class EventService {
 
             User organizer = userService.findByEmail(event.getOrganizerId());
             userService.removeOrganizedEvent(organizer.getId(), id);
+
+            auditService.logChange("Event", id, "DELETE", null, null, null,
+                    permissionAuthorizationService.getCurrentUser().getEmail());
 
             eventRepository.deleteById(id);
         }
@@ -342,4 +359,13 @@ public class EventService {
 
         validateEventTags(event.getTags());
     }
+
+    private void logChangesForUpdate(String id, String oldTitle, Event existingEvent, String oldDescription, LocalDateTime oldStartDate, LocalDateTime oldEndDate) {
+        String email = permissionAuthorizationService.getCurrentUser().getEmail();
+        auditService.logIfChanged("Event", id, "title", oldTitle, existingEvent.getTitle(), email);
+        auditService.logIfChanged("Event", id, "description", oldDescription, existingEvent.getDescription(), email);
+        auditService.logIfChanged("Event", id, "startDate", oldStartDate, existingEvent.getStartDate(), email);
+        auditService.logIfChanged("Event", id, "endDate", oldEndDate, existingEvent.getEndDate(), email);
+    }
+
 }
