@@ -65,7 +65,7 @@ public class EventSuggestionService {
         }
     }
 
-    private ChatCompletionRequest buildRequest(List<ChatMessage> messages) {
+    ChatCompletionRequest buildRequest(List<ChatMessage> messages) {
         return ChatCompletionRequest.builder()
                 .model(model)
                 .messages(messages)
@@ -74,7 +74,7 @@ public class EventSuggestionService {
                 .build();
     }
 
-    private String createContext(List<Event> events) {
+    String createContext(List<Event> events) {
         return events.stream()
                 .limit(10)
                 .map(event -> {
@@ -120,7 +120,7 @@ public class EventSuggestionService {
         );
     }
 
-    private List<ChatMessage> createPrompt(String userId, String context) {
+    List<ChatMessage> createPrompt(String userId, String context) {
         return List.of(
                 new ChatMessage("system", """
                         Você é um assistente especialista em recomendar eventos para usuários.
