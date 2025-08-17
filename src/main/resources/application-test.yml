@@ -1,0 +1,6 @@
+spring:
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/event-manager-ms-test}
+      database: event-manager-ms-test
+      auto-index-creation: true
