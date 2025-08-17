@@ -179,4 +179,23 @@ public interface EventApi {
     @PostMapping("/{id}/attendees/{userId}")
     ResponseEntity<AttendeeResponseDTO> addAttendee(@NotBlank @PathVariable(value = "id") String id,
                                                     @NotBlank @PathVariable(value = "userId") String userId);
+
+    @Operation(
+            summary = "Obter sugestões de eventos usando IA",
+            description = "Gera sugestões personalizadas de eventos usando ChatGPT baseado no perfil do usuário"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description ="Requisição feita com sucesso",
+                    content = @Content(schema = @Schema(implementation = AttendeeResponseDTO.class))),
+            @ApiResponse(responseCode = "400", description = "Requisição inválida"),
+            @ApiResponse(responseCode = "401", description = "Não Autorizado"),
+    })
+    @Parameter(
+            name = "userId",
+            description = "id do usuario",
+            required = true,
+            in = ParameterIn.PATH
+    )
+    @GetMapping("/suggestions/{userId}")
+    ResponseEntity<String> getSuggestions(@PathVariable String userId);
 }

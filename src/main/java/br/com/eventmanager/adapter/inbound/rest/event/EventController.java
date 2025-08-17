@@ -1,6 +1,7 @@
 package br.com.eventmanager.adapter.inbound.rest.event;
 
 import br.com.eventmanager.application.service.EventService;
+import br.com.eventmanager.application.service.EventSuggestionService;
 import br.com.eventmanager.domain.Event;
 import br.com.eventmanager.domain.dto.AttendeeResponseDTO;
 import br.com.eventmanager.domain.dto.EventDTO;
@@ -18,7 +19,8 @@ import java.util.List;
 public class EventController implements EventApi {
     
     private final EventService eventService;
-    
+    private final EventSuggestionService suggestionService;
+
    @Override
     public ResponseEntity<Event> createEvent(EventRequestDTO event) {
         Event createdEvent = eventService.createEvent(event);
@@ -85,5 +87,12 @@ public class EventController implements EventApi {
                             .message(resultDTO.getError())
                             .build());
         }
+    }
+
+    public ResponseEntity<String> getSuggestions(
+            @PathVariable String userId) {
+
+        String suggestions = suggestionService.suggestEventsForUser(userId);
+        return ResponseEntity.ok(suggestions);
     }
 }

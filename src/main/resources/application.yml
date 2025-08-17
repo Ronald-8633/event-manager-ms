@@ -14,8 +14,8 @@ spring:
 
   rabbitmq:
     addresses: 'localhost:5672'
-    username: ${USUARIO}
-    password: ${SENHA}
+    username: ${USUARIO_RABBIT:""}
+    password: ${SENHA_RABBIT:""}
     virtual-host: '/'
 
   cloud:
@@ -66,6 +66,18 @@ jwt:
   secret: suaChaveSecretaMuitoLongaEAleatoriaAqui123456789
   expiration: 86400000
 
+openai:
+  api:
+    key: ${OPENAI_API_KEY:""}
+    model: gpt-4o-mini
+    max-tokens: 800
+    temperature: 0.7
+microservice:
+  chatgpt:
+    protocol: https
+    hostname: api.openai.com
+    port:
+    path: v1/chat/completions
 logging:
   level:
     root: INFO
