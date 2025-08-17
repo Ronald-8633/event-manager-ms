@@ -3,6 +3,8 @@ package br.com.eventmanager.shared;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
+import java.time.format.DateTimeFormatter;
+
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class Constants {
 
@@ -33,4 +35,8 @@ public class Constants {
     // Broker Constantss
     public static final String SUBSCRIBE_EVENT_CANCEL = "subscribeEventCancel-in-0";
     public static final String RETRIES = "retries";
+
+
+    //dates
+    public static final DateTimeFormatter CSV_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd");
 }

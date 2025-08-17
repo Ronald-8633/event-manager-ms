@@ -108,8 +108,9 @@ public class EventService {
         return eventRepository.findByStatus(status).stream()
                 .filter(this::filterByPermission)
                 .map(event -> {
-                    Category category = categoryRepository.findById(event.getCategoryCode()).orElse(null);
-                    return buildEventDTO(event, category, null);
+                    Category categoryEntity = categoryRepository.findByCategoryCode(event.getCategoryCode()).orElse(null);
+                    Location location = locationRepository.findByLocationCode(event.getLocationCode()).orElse(null);
+                    return buildEventDTO(event, categoryEntity, location);
                 })
                 .collect(Collectors.toList());
     }

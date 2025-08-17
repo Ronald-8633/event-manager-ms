@@ -1,4 +1,4 @@
-package br.com.eventmanager.adapter.inbound.rest;
+package br.com.eventmanager.adapter.inbound.rest.category;
 
 import br.com.eventmanager.adapter.outbound.persistence.CategoryRepository;
 import br.com.eventmanager.domain.Category;
@@ -16,15 +16,13 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/v1/categories")
 @RequiredArgsConstructor
-@Tag(name = "Categories", description = "Category management APIs")
-public class CategoryController {
+public class CategoryController implements CategoryApi {
     
     private final CategoryRepository categoryRepository;
     private final EventMapper eventMapper;
     
-    @GetMapping
+   @Override
     public ResponseEntity<List<CategoryDTO>> getAllCategories() {
         List<Category> categories = categoryRepository.findByIsActiveTrue();
         List<CategoryDTO> categoryDTOs = categories.stream()
@@ -32,16 +30,16 @@ public class CategoryController {
                 .collect(Collectors.toList());
         return ResponseEntity.ok(categoryDTOs);
     }
-    
-    @GetMapping("/{id}")
+
+    @Override
     public ResponseEntity<CategoryDTO> getCategoryById(@PathVariable String id) {
         return categoryRepository.findById(id)
                 .map(eventMapper::toCategoryDTO)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
-    
-    @GetMapping("/name/{name}")
+
+    @Override
     public ResponseEntity<CategoryDTO> getCategoryByName(@PathVariable String name) {
         return categoryRepository.findByName(name)
                 .map(eventMapper::toCategoryDTO)

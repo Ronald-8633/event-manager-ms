@@ -1,4 +1,4 @@
-package br.com.eventmanager.adapter.inbound.rest;
+package br.com.eventmanager.adapter.inbound.rest.user;
 
 import br.com.eventmanager.adapter.inbound.rest.exception.BusinessException;
 import br.com.eventmanager.application.service.PermissionAuthorizationService;
@@ -17,21 +17,19 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
-@Tag(name = "Users", description = "User management APIs")
-public class UserController {
+public class UserController implements UserApi {
 
     private final UserService userService;
     private final PermissionAuthorizationService authorizationService;
 
-    @GetMapping("/profile")
+    @Override
     public ResponseEntity<UserProfileDTO> getCurrentUserProfile() {
         User currentUser = authorizationService.getCurrentUser();
         return ResponseEntity.ok(buildUserProfileDTO(currentUser));
     }
 
-    @GetMapping("/{id}")
+    @Override
     public ResponseEntity<UserProfileDTO> getUserById(@PathVariable String id) {
         authorizationService.validatePermission(Permission.USER_READ);
 
@@ -41,7 +39,7 @@ public class UserController {
         return ResponseEntity.ok(buildUserProfileDTO(user));
     }
 
-    @GetMapping
+    @Override
     public ResponseEntity<List<UserProfileDTO>> getAllUsers() {
         authorizationService.validatePermission(Permission.USER_READ);
 
@@ -52,7 +50,7 @@ public class UserController {
         return ResponseEntity.ok(users);
     }
 
-    @DeleteMapping("/{id}")
+    @Override
     public ResponseEntity<Void> deleteUser(@PathVariable String id) {
         authorizationService.validatePermission(Permission.USER_DELETE);
 

@@ -1,4 +1,4 @@
-package br.com.eventmanager.adapter.inbound.rest;
+package br.com.eventmanager.adapter.inbound.rest.event;
 
 import br.com.eventmanager.application.service.EventService;
 import br.com.eventmanager.domain.Event;
@@ -6,8 +6,6 @@ import br.com.eventmanager.domain.dto.AttendeeResponseDTO;
 import br.com.eventmanager.domain.dto.EventDTO;
 import br.com.eventmanager.domain.dto.EventRequestDTO;
 import br.com.eventmanager.domain.dto.ResultDTO;
-import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,57 +14,55 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/events")
 @RequiredArgsConstructor
-@Tag(name = "Events", description = "Event management APIs")
-public class EventController {
+public class EventController implements EventApi {
     
     private final EventService eventService;
     
-    @PostMapping
-    public ResponseEntity<Event> createEvent(@RequestBody @Valid EventRequestDTO event) {
+   @Override
+    public ResponseEntity<Event> createEvent(EventRequestDTO event) {
         Event createdEvent = eventService.createEvent(event);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdEvent);
     }
     
-    @GetMapping("/{id}")
-    public ResponseEntity<EventDTO> getEventById(@PathVariable String id) {
+    @Override
+    public ResponseEntity<EventDTO> getEventById(String id) {
         return eventService.findEventDTOById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
     
-    @GetMapping
+    @Override
     public ResponseEntity<List<EventDTO>> getAllEvents() {
         List<EventDTO> events = eventService.findAllEventDTOs();
         return ResponseEntity.ok(events);
     }
     
-    @GetMapping("/category/{category}")
-    public ResponseEntity<List<EventDTO>> getEventsByCategory(@PathVariable String category) {
+    @Override
+    public ResponseEntity<List<EventDTO>> getEventsByCategory(String category) {
         List<EventDTO> events = eventService.findEventDTOsByCategory(category);
         return ResponseEntity.ok(events);
     }
     
-    @GetMapping("/status/{status}")
-    public ResponseEntity<List<EventDTO>> getEventsByStatus(@PathVariable Event.EventStatus status) {
+    @Override
+    public ResponseEntity<List<EventDTO>> getEventsByStatus(Event.EventStatus status) {
         List<EventDTO> events = eventService.findEventDTOsByStatus(status);
         return ResponseEntity.ok(events);
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<Event> updateEvent(@PathVariable String id, @RequestBody EventRequestDTO eventDetails) {
+    @Override
+    public ResponseEntity<Event> updateEvent(String id,EventRequestDTO eventDetails) {
         Event updatedEvent = eventService.updateEvent(id, eventDetails);
         return ResponseEntity.ok(updatedEvent);
     }
     
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteEvent(@PathVariable String id) {
+    @Override
+    public ResponseEntity<Void> deleteEvent(String id) {
         eventService.deleteEvent(id);
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/{id}/publish")
+    @Override
     public ResponseEntity<Event> publishEvent(@PathVariable String id) {
 
         Event publishedEvent = eventService.publishEvent(id);
@@ -74,8 +70,8 @@ public class EventController {
         return ResponseEntity.ok(publishedEvent);
     }
 
-    @PostMapping("/{id}/attendees/{userId}")
-    public ResponseEntity<AttendeeResponseDTO> addAttendee(@PathVariable String id, @PathVariable String userId) {
+    @Override
+    public ResponseEntity<AttendeeResponseDTO> addAttendee(String id,String userId) {
         ResultDTO<AttendeeResponseDTO> resultDTO = eventService.addAttendee(id, userId);
 
         if (resultDTO.isSuccess()) {

@@ -1,30 +1,25 @@
-package br.com.eventmanager.adapter.inbound.rest;
+package br.com.eventmanager.adapter.inbound.rest.location;
 
 import br.com.eventmanager.adapter.outbound.persistence.LocationRepository;
 import br.com.eventmanager.domain.Location;
 import br.com.eventmanager.domain.dto.LocationDTO;
 import br.com.eventmanager.domain.mapper.EventMapper;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/v1/locations")
 @RequiredArgsConstructor
-@Tag(name = "Locations", description = "Location management APIs")
-public class LocationController {
+public class LocationController implements LocationApi {
     
     private final LocationRepository locationRepository;
     private final EventMapper eventMapper;
     
-    @GetMapping
+    @Override
     public ResponseEntity<List<LocationDTO>> getAllLocations() {
         List<Location> locations = locationRepository.findByIsActiveTrue();
         List<LocationDTO> locationDTOs = locations.stream()
@@ -32,16 +27,16 @@ public class LocationController {
                 .collect(Collectors.toList());
         return ResponseEntity.ok(locationDTOs);
     }
-    
-    @GetMapping("/{id}")
+
+    @Override
     public ResponseEntity<LocationDTO> getLocationById(@PathVariable String id) {
         return locationRepository.findById(id)
                 .map(eventMapper::toLocationDTO)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
-    
-    @GetMapping("/city/{city}")
+
+    @Override
     public ResponseEntity<List<LocationDTO>> getLocationsByCity(@PathVariable String city) {
         List<Location> locations = locationRepository.findByCity(city);
         List<LocationDTO> locationDTOs = locations.stream()
@@ -49,8 +44,8 @@ public class LocationController {
                 .collect(Collectors.toList());
         return ResponseEntity.ok(locationDTOs);
     }
-    
-    @GetMapping("/capacity/{minCapacity}")
+
+    @Override
     public ResponseEntity<List<LocationDTO>> getLocationsByMinCapacity(@PathVariable Integer minCapacity) {
         List<Location> locations = locationRepository.findByCapacityGreaterThanEqual(minCapacity);
         List<LocationDTO> locationDTOs = locations.stream()
