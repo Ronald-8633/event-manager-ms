@@ -66,6 +66,9 @@ class EventServiceTest {
     @Mock
     private AuditService auditService;
 
+    @Mock
+    private EmailService emailService;
+
     @InjectMocks
     private EventService eventService;
 
@@ -236,6 +239,9 @@ class EventServiceTest {
         when(eventRepository.findById(event.getId())).thenReturn(Optional.of(event));
         doNothing().when(permissionAuthorizationService).validateEventModification(event);
         when(attendeeValidationChainService.validate(event, userId)).thenReturn(null);
+        when(eventRepository.save(event)).thenReturn(event);
+        when(userService.findById(anyString())).thenReturn(Optional.of(currentUser));
+        when(userService.findByEmail(anyString())).thenReturn(currentUser);
         when(eventRepository.save(event)).thenReturn(event);
 
         var result = eventService.addAttendee(event.getId(), userId);

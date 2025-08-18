@@ -16,9 +16,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.util.DigestUtils;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -42,6 +44,7 @@ public class EventService {
     private final PermissionAuthorizationService permissionAuthorizationService;
     private final UserService userService;
     private final AuditService auditService;
+    private final EmailService emailService;
 
     public Event createEvent(EventRequestDTO eventRequest) {
 
@@ -240,6 +243,8 @@ public class EventService {
 
         log.info("Added attendee {} to event {}", userId, eventId);
 
+        sendConfirmationEmail(event, userId);
+
         AttendeeResponseDTO successResponse = buildAttendeeResponse(event, userId, true,
                 "Usuário inscrito com sucesso no evento!");
 
@@ -368,5 +373,37 @@ public class EventService {
         auditService.logIfChanged("Event", id, "startDate", oldStartDate, existingEvent.getStartDate(), email);
         auditService.logIfChanged("Event", id, "endDate", oldEndDate, existingEvent.getEndDate(), email);
     }
+
+    private void sendConfirmationEmail(Event event, String userId) {
+        try {
+            User user = userService.findById(userId).orElseThrow(() -> new BusinessException(messageService.getMessage(EM_0015)));
+            Location location = locationRepository.findByLocationCode(event.getLocationCode()).orElse(null);
+            User organizer = userService.findByEmail(event.getOrganizerId());
+
+            String confirmationCode = generateConfirmationCode(event.getId(), userId);
+
+            EmailRequestDTO emailRequest = EmailRequestDTO.builder()
+                    .toEmail(user.getEmail())
+                    .toName(user.getName())
+                    .eventTitle(event.getTitle())
+                    .eventDate(event.getStartDate().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")))
+                            .eventTime(event.getStartDate().format(DateTimeFormatter.ofPattern("HH:mm")))
+                                    .eventLocation(location != null ? location.getName() : "Local a confirmar")
+                                    .organizerName(organizer != null ? organizer.getName() : "Organizador")
+                                    .confirmationCode(confirmationCode)
+                                    .build();
+
+            emailService.sendEventConfirmation(emailRequest);
+
+        } catch (Exception e) {
+            log.error("Error sending confirmation email for event: {} and user: {}", event.getId(), userId, e);
+        }
+    }
+
+    private String generateConfirmationCode(String eventId, String userId) {
+        String base = eventId + userId + LocalDateTime.now().toString();
+        return DigestUtils.md5DigestAsHex(base.getBytes()).substring(0, 8).toUpperCase();
+    }
+
 
 }

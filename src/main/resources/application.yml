@@ -72,6 +72,14 @@ openai:
     model: gpt-4o-mini
     max-tokens: 800
     temperature: 0.7
+aws:
+  access-key: ${AWS_ACCESS_KEY:}
+  secret-key: ${AWS_SECRET_KEY:}
+  ses:
+    region: us-east-2
+    from-email: ${AWS_SES_FROM_EMAIL:}
+    verified-email: ${AWS_SES_VERIFIED_EMAIL:}
+
 microservice:
   chatgpt:
     protocol: https
