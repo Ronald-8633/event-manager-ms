@@ -1,6 +1,6 @@
 # Event Manager MS
 
-Sistema de Gestão de Eventos
+Sistema de Gestão de Eventos Com Sugestões Inteligentes
 
 ## 🚀 Sobre o Projeto
 
@@ -8,6 +8,7 @@ O Event Manager MS é uma aplicação Spring Boot que oferece uma solução comp
 
 - **Gestão de Eventos**: CRUD completo de eventos com categorias e localizações
 - **Sistema de Usuários**: Diferentes perfis (usuário, organizador, admin)
+- **Sugestão Inteligente**: Sugestões inteligentes com base nas preferencias dos usuários
 - **Arquitetura Limpa**: Seguindo princípios de Clean Architecture
 - **API REST**: Documentada com Swagger/OpenAPI
 - **Banco NoSQL**: MongoDB para flexibilidade e escalabilidade
@@ -67,8 +68,8 @@ A aplicação estará disponível em: `http://localhost:8080/api`
 
 ## 📚 API Documentation
 
-### Swagger UI
-- **URL**: `http://localhost:8080/api/swagger-ui.html`
+### Swagger UI 
+- **URL**: `http://localhost:8080/swagger-ui/index.html#/`
 - **API Docs**: `http://localhost:8080/api/api-docs`
 
 ### Endpoints Principais

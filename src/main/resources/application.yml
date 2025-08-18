@@ -14,8 +14,8 @@ spring:
 
   rabbitmq:
     addresses: 'localhost:5672'
-    username: ${USUARIO_RABBIT:""}
-    password: ${SENHA_RABBIT:""}
+    username: ${USUARIO_RABBIT:guest}
+    password: ${SENHA_RABBIT:guest}
     virtual-host: '/'
 
   cloud:
